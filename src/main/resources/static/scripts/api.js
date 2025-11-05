@@ -1,5 +1,5 @@
 // A URL base da sua API Spring Boot (ajuste se estiver noutra porta/domínio)
-const BASE_URL = 'http://localhost:8080/api';
+const BASE_URL = 'https://erasmus-cc2025-api.azurewebsites.net/api';
 
 // --- Funções de Autenticação ---
 
