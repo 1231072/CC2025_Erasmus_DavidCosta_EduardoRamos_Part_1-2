@@ -24,9 +24,9 @@ jobs:
       # 1. Empacotar apenas os ficheiros estáticos (HTML/JS/CSS)
       - name: Create Static Package (ZIP)
         run:
-          cd ${{ github.workspace }}/src/main/resources/static
-          zip -r frontend_package.zip .
-          mv frontend_package.zip ${{ github.workspace }}/frontend_package.zip 
+          WORKSPACE="${{ github.workspace }}"
+          STATIC_DIR="$WORKSPACE/src/main/resources/static"
+          cd $STATIC_DIR && zip -r frontend_package.zip . && mv frontend_package.zip $WORKSPACE/
 
       - name: Login to Azure
         uses: azure/login@v2
