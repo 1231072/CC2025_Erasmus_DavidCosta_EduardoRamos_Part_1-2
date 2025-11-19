@@ -33,18 +33,17 @@ public class SecurityConfig {
                 "/css/**",
                 "/js/**",
 
-                // Outros recursos que não devem passar pelo filtro JWT
+
                 "/h2-console/**",
                 "/swagger-ui/**",
                 "/v3/api-docs/**"
         );
     }
 
-    // ATENÇÃO: jwtFilter e unauthorizedHandler são injetados como argumentos do método
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   JwtAuthenticationFilter jwtFilter, // Deixe o Spring injetar aqui
-                                                   JwtAuthenticationEntryPoint unauthorizedHandler) throws Exception { // Deixe o Spring injetar aqui
+                                                   JwtAuthenticationFilter jwtFilter,
+                                                   JwtAuthenticationEntryPoint unauthorizedHandler) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
@@ -63,19 +62,21 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 );
 
-        // O filtro JWT só será aplicado às rotas que não foram ignoradas pelo WebSecurityCustomizer
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // ... (restantes Beans)
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        // ... (código CORS anterior - sem alterações)
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://127.0.0.1:3000","https://erasmus-cc2025-ui.azurewebsites.net"));
+
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "https://erasmus-cc2025-ui.azurewebsites.net"
+        ));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
