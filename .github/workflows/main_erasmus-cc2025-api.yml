@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read #This is required for actions/checkout
 
     steps:
       - uses: actions/checkout@v4
@@ -26,11 +26,11 @@ jobs:
         # Comando de build único
         run: mvn clean package -DskipTests
 
-      # PASSO CORRIGIDO 1: Renomear o JAR (Garante que Azure o encontra)
+      # ➡️ FIX 1: Rename the dynamically named JAR to 'app.jar'
       - name: Rename JAR to app.jar
         run: |
-          # Encontra o JAR gerado (pode ter um nome longo, ex: cloudcomputing-0.0.1-SNAPSHOT.jar)
-          # e move-o para app.jar na pasta target.
+          # Finds the generated JAR (e.g., cloudcomputing-0.0.1-SNAPSHOT.jar)
+          # and moves it to app.jar in the target folder.
           JAR_FILE=$(find target -name "*.jar" -type f -print -quit)
           if [ -f "$JAR_FILE" ]; then
             mv "$JAR_FILE" target/app.jar
@@ -40,12 +40,12 @@ jobs:
             exit 1
           fi
 
-      # PASSO CORRIGIDO 2: Upload do artefacto renomeado
+      # ➡️ FIX 2: Upload the renamed artifact
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          # ATENÇÃO: Aponta explicitamente para o ficheiro renomeado
+          # Points explicitly to the renamed file
           path: '${{ github.workspace }}/target/app.jar'
 
   deploy:
@@ -61,8 +61,6 @@ jobs:
         with:
           name: java-app
 
-      # ⚠️ CORREÇÃO: O artefacto descarregado está na raiz do workspace.
-      # O pacote deve ser o nome do ficheiro, app.jar.
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -76,5 +74,5 @@ jobs:
         with:
           app-name: 'erasmus-cc2025-api'
           slot-name: 'Production'
-          # ATENÇÃO: Agora é apenas 'app.jar' porque está na raiz após o download
+          # ➡️ FIX 3: Specify 'app.jar' as the package name for deployment
           package: 'app.jar'
