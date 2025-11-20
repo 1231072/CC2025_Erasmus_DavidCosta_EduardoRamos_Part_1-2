@@ -51,15 +51,7 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-
-                        // REGRAS DE ACESSO PÚBLICO (REST)
-                        .requestMatchers("/api/auth/**").permitAll() // Login e Register
-
-                        // REGRAS PROTEGIDAS
-                        .requestMatchers("/api/**").authenticated() // Exigir autenticação JWT para os endpoints de dados
-
-                        // REGRA CATCH-ALL
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 );
 
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
