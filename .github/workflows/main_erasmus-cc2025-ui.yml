@@ -22,8 +22,7 @@ jobs:
         run: |
           cd src/main/resources/static
           npm install
-          npm run build || true
-          zip -r ../../../node-release.zip .
+          zip -r ../../../node-release.zip . -x "node_modules/*" -x "package-lock.json" -x "package.json"
           cd ../../..
 
       - name: Upload artifact for deployment job
