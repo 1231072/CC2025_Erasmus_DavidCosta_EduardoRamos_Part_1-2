@@ -21,12 +21,9 @@ jobs:
       - name: Install dependencies and prepare files
         run: |
           ARTIFACT_NAME=node-release.zip
-          
           cd src/main/resources/static
           npm install
-          
-          zip -r $ARTIFACT_NAME . -x "node_modules/*" -x "package-lock.json" -x "package.json"
-          
+          zip -r $ARTIFACT_NAME . 
           mv $ARTIFACT_NAME $GITHUB_WORKSPACE/
 
       - name: Upload artifact for deployment job
