@@ -23,11 +23,8 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-    }
+
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
@@ -47,22 +44,33 @@ public class SecurityConfig {
 
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtAuthenticationFilter jwtFilter, // Deixe o Spring injetar aqui
+                                                   JwtAuthenticationEntryPoint unauthorizedHandler) throws Exception { // Deixe o Spring injetar aqui
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Usa a configuração CORS definida
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Permite acesso público ao endpoint de registro/autenticação
-                        .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+
+                        // REGRAS DE ACESSO PÚBLICO (REST)
+                        .requestMatchers("/api/auth/**").permitAll() // Login e Register
+
+                        // REGRAS PROTEGIDAS
+                        .requestMatchers("/api/**").authenticated() // Exigir autenticação JWT para os endpoints de dados
+
+                        // REGRA CATCH-ALL
                         .anyRequest().authenticated()
-                )
-                // Adiciona o filtro JWT
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                );
+
+        // O filtro JWT só será aplicado às rotas que não foram ignoradas pelo WebSecurityCustomizer
+        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -74,7 +82,7 @@ public class SecurityConfig {
                 "https://127.0.0.1:3000",
                 "https://localhost:8080",
                 "https://erasmus-cc2025-ui.azurewebsites.net",
-                "http://erasmus-cc2025-ui.azurewebsites.net"
+                "http://erasmus-cc2025-api.azurewebsites.net"
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));

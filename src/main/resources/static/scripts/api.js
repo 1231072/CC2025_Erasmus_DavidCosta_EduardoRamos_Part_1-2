@@ -54,7 +54,6 @@ async function fetchItems() {
             return await response.json();
         }
 
-        // 🛑 CORREÇÃO DO LOOP INFINITO 🛑
         if (response.status === 401 || response.status === 403) {
             console.warn("Sessão inválida. A fazer logout...");
             logout(); // Limpa o token
