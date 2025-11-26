@@ -15,6 +15,7 @@ import com.cloudcomputing.controller.LoginRequest;
 
 import java.util.Map;
 
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -30,7 +31,7 @@ public class AuthController {
         this.userService = userService;
     }
 
-
+    @CrossOrigin
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
         if (req.getUsername() == null || req.getPassword() == null) {

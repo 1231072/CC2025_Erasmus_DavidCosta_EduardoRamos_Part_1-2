@@ -82,7 +82,8 @@ public class SecurityConfig {
                 "https://127.0.0.1:3000",
                 "https://localhost:8080",
                 "https://erasmus-cc2025-ui.azurewebsites.net",
-                "http://erasmus-cc2025-api.azurewebsites.net"
+                "https://erasmus-cc2025-api.azurewebsites.net"
+
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
