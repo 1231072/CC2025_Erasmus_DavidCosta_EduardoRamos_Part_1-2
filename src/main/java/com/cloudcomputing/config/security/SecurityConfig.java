@@ -80,7 +80,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
                 "https://localhost:3000",
                 "https://127.0.0.1:3000",
-                "https://localhost:8080",
+                "http://localhost:8080",
                 "https://erasmus-cc2025-ui.azurewebsites.net",
                 "https://erasmus-cc2025-api.azurewebsites.net"
 
