@@ -58,14 +58,14 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_B876FB95435A4C4480687CE5ACF22ECD }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_11A90FAD32164C5E857BF1237FF0752A }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_025B3734FA6B47CFAFDA6734E1DC7FD7 }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'erasmus-cc2025-api'
+          app-name: 'p3-api'
           slot-name: 'Production'
           package: app.jar
