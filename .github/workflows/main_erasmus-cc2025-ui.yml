@@ -22,10 +22,10 @@ jobs:
         run: |
           cd src/main/resources/static
           npm install
-          # Este comando cria a pasta 'build' com ficheiros otimizados
           npm run build
-          # Comprimimos apenas a pasta build para o deploy
           zip -r ../../../../node-release.zip build/
+        env:
+          REACT_APP_API_URL: ${{ vars.REACT_APP_API_URL }}
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
