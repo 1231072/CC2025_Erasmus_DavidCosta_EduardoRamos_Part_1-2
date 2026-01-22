@@ -1,5 +1,6 @@
 import { useAuth } from "react-oidc-context";
 import React, { useState } from "react";
+import Dashboard from "./components/Dashboard";
 
 function App() {
   const auth = useAuth();
@@ -35,19 +36,26 @@ function App() {
 
   if (auth.isAuthenticated) {
     return (
-      <div style={{ padding: "20px" }}>
-        <h2>Bem-vindo, {auth.user?.profile.email}</h2>
-        <button onClick={() => callApi("profile")}>Ver Perfil</button>
-        <button onClick={() => callApi("data")} style={{ marginLeft: "10px" }}>Aceder Dados</button>
-        <button onClick={signOutRedirect} style={{ marginLeft: "10px", color: "red" }}>Sign Out</button>
+        <div>
+            <nav style={{ padding: '10px', background: '#2c3e50', color: 'white', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Erasmus Cloud Portal</span>
+                <button onClick={signOutRedirect} style={{ background: '#e74c3c', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer' }}>Sair</button>
+            </nav>
 
-        {apiData && (
-          <div style={{ marginTop: "20px", background: "#eee", padding: "10px" }}>
-            <pre>{JSON.stringify(apiData, null, 2)}</pre>
-          </div>
-        )}
-      </div>
+            {/* Botões de controle para teste */}
+            <div style={{ padding: '10px 20px' }}>
+                 <button onClick={() => callApi("data")}>Atualizar Dados do Azure</button>
+            </div>
+
+            {apiData && (
+                <Dashboard
+                    data={apiData.data}
+                    profile={{ role: apiData.role, deviceId: apiData.device_id }}
+                />
+            )}
+        </div>
     );
+
   }
 
   return (
