@@ -1,4 +1,4 @@
-name: Deploy Frontend Node.js App - erasmus-cc2025-ui
+name: Deploy Frontend React - erasmus-cc2025-ui
 
 on:
   push:
@@ -16,15 +16,16 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v4
         with:
-          node-version: '24.x'
+          node-version: '20.x' # Versão LTS recomendada para maior estabilidade
 
-      - name: Install dependencies and prepare files
+      - name: Install dependencies and build
         run: |
-          ARTIFACT_NAME=node-release.zip
           cd src/main/resources/static
           npm install
-          zip -r $ARTIFACT_NAME . 
-          mv $ARTIFACT_NAME $GITHUB_WORKSPACE/
+          # Este comando cria a pasta 'build' com ficheiros otimizados
+          npm run build
+          # Comprimimos apenas a pasta build para o deploy
+          zip -r ../../../../node-release.zip build/
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -47,7 +48,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'p3-ui'
+          app-name: 'p3-ui' # Certifica-te que este nome coincide no Azure
           slot-name: 'Production'
           package: node-release.zip
           publish-profile: ${{ secrets.AZURE_PUBLISHPROFILE }}
