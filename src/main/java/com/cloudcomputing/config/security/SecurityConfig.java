@@ -3,13 +3,17 @@ package com.cloudcomputing.config.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -20,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Configuration
+@EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
@@ -44,29 +49,23 @@ public class SecurityConfig {
 
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   JwtAuthenticationFilter jwtFilter, // Deixe o Spring injetar aqui
-                                                   JwtAuthenticationEntryPoint unauthorizedHandler) throws Exception { // Deixe o Spring injetar aqui
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(cors -> cors.configurationSource(request -> {
+                    var corsConfiguration = new CorsConfiguration();
+                    corsConfiguration.setAllowedOrigins(List.of("http://localhost:3000"));
+                    corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+                    return corsConfiguration;
+                }))
+                .csrf(csrf -> csrf.disable()) // Desativar para facilitar testes locais
                 .authorizeHttpRequests(auth -> auth
-
-                        // REGRAS DE ACESSO PÚBLICO (REST)
-                        .requestMatchers("/api/auth/**").permitAll() // Login e Register
-
-                        // REGRAS PROTEGIDAS
-                        .requestMatchers("/api/**").authenticated() // Exigir autenticação JWT para os endpoints de dados
-
-                        // REGRA CATCH-ALL
-                        .anyRequest().authenticated()
-                );
-
-        // O filtro JWT só será aplicado às rotas que não foram ignoradas pelo WebSecurityCustomizer
-        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers("/api/public/**").permitAll() // Endpoints abertos
+                        .anyRequest().authenticated() // Tudo o resto exige o Token do Cognito
+                )
+                .oauth2ResourceServer(oauth -> oauth.jwt(jwt ->
+                        jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())
+                ));
 
         return http.build();
     }
@@ -75,23 +74,28 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // Lista de origens permitidas (incluindo o Azure HTTPS)
         configuration.setAllowedOrigins(List.of(
-                "https://localhost:3000",
-                "https://127.0.0.1:3000",
-                "http://localhost:8080",
-                "https://p3-ui.azurewebsites.net",
-                "https://p3-api.azurewebsites.net"
-
+                "http://localhost:3000", // Removi o 's' do localhost se não estiver usando SSL local
+                "https://p3-ui.azurewebsites.net"
         ));
-
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        // Define o prefixo 'ROLE_' e onde procurar os grupos no JWT
+        authoritiesConverter.setAuthorityPrefix("ROLE_");
+        authoritiesConverter.setAuthoritiesClaimName("cognito:groups");
+
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+        return converter;
     }
 
     @Bean
