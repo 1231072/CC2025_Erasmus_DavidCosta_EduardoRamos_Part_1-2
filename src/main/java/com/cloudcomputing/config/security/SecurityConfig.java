@@ -62,6 +62,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // Desativado para APIs REST
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/data").hasAnyAuthority("ROLE_User", "ROLE_Admin")
+                        .requestMatchers("/", "/index.html", "/static/**", "/manifest.json").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
