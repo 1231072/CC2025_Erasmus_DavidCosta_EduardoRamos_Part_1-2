@@ -39,7 +39,7 @@ const Dashboard = () => {
             const token = auth.user?.id_token;
 
             try {
-               const response = await fetch('${API_BASE_URL}/api/dashboard-data', {
+               const response = await fetch(`${API_BASE_URL}/dashboard-data`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
