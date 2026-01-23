@@ -1,94 +1,80 @@
 package com.cloudcomputing.controller;
 
+import com.cloudcomputing.model.HistoricalData;
+import com.cloudcomputing.model.LatestData;
+import com.cloudcomputing.repository.HistoricalRepository;
+import com.cloudcomputing.repository.LatestRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = "http://localhost:3000")
 public class UserController {
 
-    /**
-     * Endpoint 1: /api/profile
-     * Mostra informações do utilizador e a Role reconhecida oficialmente pelo Spring.
-     */
-    @GetMapping("/profile")
-    public ResponseEntity<?> getProfile(@AuthenticationPrincipal Jwt jwt, Authentication auth) {
-        // Extração de identidade com fallback
-        String username = jwt.getClaimAsString("cognito:username");
-        if (username == null) username = jwt.getSubject();
+    @Autowired
+    private LatestRepository latestRepo;
 
+    @Autowired
+    private HistoricalRepository historicalRepo;
+
+    @GetMapping("/dashboard-data")
+    public ResponseEntity<?> getDashboardData(@AuthenticationPrincipal Jwt jwt, Authentication auth) {
+
+        System.out.println("--- Debug Dashboard Request ---");
+        // Tentativa de ler de diferentes claims comuns no Cognito
         String email = jwt.getClaimAsString("email");
+        String username = jwt.getClaimAsString("cognito:username");
 
-        // Agora verificamos a Role através das authorities oficiais do Spring
-        // que o nosso JwtAuthenticationConverter mapeou.
-        boolean isAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_Admin"));
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("username", username);
-        response.put("email", email != null ? email : "Não disponível (Access Token usado)");
-        response.put("role", isAdmin ? "admin" : "user");
-        response.put("authorities", auth.getAuthorities()); // Mostra o que o Spring leu
-        response.put("all_claims", jwt.getClaims());
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Endpoint 2: /api/data
-     * Filtra dados com base na autoridade reconhecida ou no device_id.
-     */
-    @GetMapping("/data")
-    public ResponseEntity<?> getData(@AuthenticationPrincipal Jwt jwt, Authentication auth) {
-        // 1. Identificar a Role (usando as autoridades mapeadas pelo Spring)
-        boolean isAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_Admin"));
-
-        // 2. Extrair o atributo customizado (Certifique-se de enviar o ID Token no React)
+        // Atributo essencial para o utilizador comum
         String userDeviceId = jwt.getClaimAsString("custom:device_id");
 
-        // Dados Simulados (Estes dados serão substituídos pela Base de Dados no próximo passo)
-        List<Map<String, Object>> databaseRecords = List.of(
-                Map.of("id", 1, "device_id", "E-001", "sensor_reading", 25.5, "status", "Online"),
-                Map.of("id", 2, "device_id", "E-002", "sensor_reading", 30.1, "status", "Offline"),
-                Map.of("id", 3, "device_id", "E-001", "sensor_reading", 22.0, "status", "Online")
-        );
+        System.out.println("Utilizador: " + (email != null ? email : username));
+        System.out.println("Authorities: " + auth.getAuthorities());
+        System.out.println("ID do Dispositivo extraído: " + userDeviceId);
 
-        // 3. Lógica de Decisão
+        // 1. Verificar se é Admin
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_Admin") ||
+                        a.getAuthority().equalsIgnoreCase("Admin"));
+
         if (isAdmin) {
-            // ADMIN: Vê absolutamente tudo
+            System.out.println("Acesso ADMIN confirmado.");
             return ResponseEntity.ok(Map.of(
                     "role", "admin",
-                    "device_id", "Todos os Dispositivos",
-                    "data", databaseRecords
+                    "latest", latestRepo.findAll(),
+                    "historical", historicalRepo.findAll()
             ));
         }
 
-        // USER COMUM: Verificação do atributo
+        // 2. Lógica para User Comum
         if (userDeviceId == null || userDeviceId.isEmpty()) {
+            System.out.println("Acesso negado: custom:device_id é null.");
             return ResponseEntity.status(403).body(Map.of(
                     "error", "Acesso Negado",
-                    "message", "O seu perfil não tem um dispositivo (custom:device_id) atribuído no Cognito."
+                    "message", "O seu token AWS não contém o atributo 'custom:device_id'. Verifique as permissões no Cognito."
             ));
         }
 
-        // Filtrar a lista para conter apenas o que pertence ao utilizador
-        List<Map<String, Object>> filteredData = databaseRecords.stream()
-                .filter(record -> userDeviceId.equals(record.get("device_id")))
-                .collect(Collectors.toList());
+        System.out.println("Acesso USER confirmado para device: " + userDeviceId);
+
+        // Busca dados filtrados
+        Optional<LatestData> latest = latestRepo.findById(userDeviceId);
+        List<HistoricalData> history = historicalRepo.findByDeviceId(userDeviceId);
 
         return ResponseEntity.ok(Map.of(
                 "role", "user",
                 "device_id", userDeviceId,
-                "data", filteredData
+                "latest", latest.isPresent() ? List.of(latest.get()) : List.of(),
+                "historical", history
         ));
     }
 }

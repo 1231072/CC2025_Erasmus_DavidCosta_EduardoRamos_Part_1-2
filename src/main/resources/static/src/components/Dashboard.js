@@ -1,63 +1,130 @@
-import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { Activity, Database, ShieldCheck, Cpu } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from 'react-oidc-context';
+import {
+    processLatestDataForTable,
+    processHistoricalDataForLineChart,
+    processHistoricalDataForBarChart,
+    processHistoricalDataForAverages // Nova função para médias e contagem
+} from '../utils/dataProcessor';
 
-const Dashboard = ({ data, profile }) => {
-    // Cálculo de métricas rápidas para os cards
-    const totalReadings = data.length;
-    const avgReading = totalReadings > 0
-        ? (data.reduce((acc, curr) => acc + curr.sensor_reading, 0) / totalReadings).toFixed(1)
-        : 0;
+import LatestDataTable from './LatestDataTable';
+import LinearChartComponent from './LinearChartComponent';
+import BarChartComponent from './BarChartComponent';
+
+const Dashboard = () => {
+    const auth = useAuth();
+    const [latestData, setLatestData] = useState([]);
+    const [historicalLineChartData, setHistoricalLineChartData] = useState([]);
+    const [barChartData, setBarChartData] = useState([]);
+    const [avgData, setAvgData] = useState([]); // State para médias e contagem
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [userRole, setUserRole] = useState('user');
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            if (!auth.isAuthenticated) return;
+
+            // O ID do dispositivo e permissões viajam no id_token da AWS
+            const token = auth.user?.id_token;
+
+            try {
+                const response = await fetch('http://localhost:8080/api/dashboard-data', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+
+                const data = await response.json();
+                setUserRole(data.role);
+
+                // 1. Processar dados para a Tabela (Vista 1)
+                if (data.latest) {
+                    const latestArray = Array.isArray(data.latest) ? data.latest : [data.latest];
+                    setLatestData(processLatestDataForTable(latestArray));
+                }
+
+                // 2. Processar dados para Gráficos Históricos (Vistas 2 a 5)
+                if (data.historical) {
+                    const deviceIdFilter = data.role === 'user' ? data.device_id : null;
+
+                    // Vista 2: Tendência (Linha)
+                    setHistoricalLineChartData(processHistoricalDataForLineChart(data.historical, deviceIdFilter));
+
+                    // Vista 3: Total por Device (Barras)
+                    setBarChartData(processHistoricalDataForBarChart(data.historical));
+
+                    // Vistas 4 e 5: Médias e Performance
+                    setAvgData(processHistoricalDataForAverages(data.historical));
+                }
+
+            } catch (e) {
+                console.error("Erro ao carregar dados:", e);
+                setError("Não foi possível ligar à base de dados.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (!auth.isLoading) fetchDashboardData();
+    }, [auth.isAuthenticated, auth.isLoading, auth.user]);
+
+    if (auth.isLoading) return <div style={{ padding: '20px' }}>A verificar credenciais AWS...</div>;
+    if (!auth.isAuthenticated) return <div style={{ padding: '20px' }}>Acesso Negado. Faça Login.</div>;
+    if (error) return <div style={{ padding: '20px', color: 'red' }}>{error}</div>;
 
     return (
-        <div style={{ padding: '20px', backgroundColor: '#f4f7f6', minHeight: '100vh' }}>
-            {/* Header com Info do Perfil */}
+        <div style={{ padding: '30px', backgroundColor: '#f9f9f9', minHeight: '100vh' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
-                <div>
-                    <h1 style={{ margin: 0, color: '#2c3e50' }}>Monitorização ETL Azure</h1>
-                    <p style={{ color: '#7f8c8d' }}>Visualização de telemetria em tempo real</p>
-                </div>
-                <div style={{ textAlign: 'right', backgroundColor: '#fff', padding: '10px 20px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                    <ShieldCheck size={18} style={{ color: profile.role === 'admin' ? '#e74c3c' : '#27ae60' }} />
-                    <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>{profile.role.toUpperCase()}</span>
-                    <div style={{ fontSize: '0.8em', color: '#95a5a6' }}>Device: {profile.deviceId}</div>
-                </div>
+                <h1>Energy Analytics Dashboard</h1>
+                <button onClick={() => auth.signoutRedirect()} style={{ backgroundColor: '#ff4d4d', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' }}>Sair</button>
             </header>
 
-            {/* Grid de Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-                <StatCard icon={<Database color="#3498db"/>} title="Total Registos" value={totalReadings} />
-                <StatCard icon={<Activity color="#e67e22"/>} title="Média Sensores" value={`${avgReading}°C`} />
-                <StatCard icon={<Cpu color="#9b59b6"/>} title="Dispositivos Ativos" value={profile.role === 'admin' ? "Múltiplos" : "1"} />
-            </div>
+            {/* VISTA 1: Tabela de Estado Recente */}
+            <section style={{ marginBottom: '40px' }}>
+                <LatestDataTable data={latestData} />
+            </section>
 
-            {/* Gráfico Principal */}
-            <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '30px' }}>
-                <h3 style={{ marginBottom: '20px' }}>Histórico de Leituras (Sensor Reading)</h3>
-                <div style={{ width: '100%', height: 300 }}>
-                    <ResponsiveContainer>
-                        <LineChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="id" label={{ value: 'ID do Registo', position: 'insideBottom', offset: -5 }} />
-                            <YAxis />
-                            <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                            <Line type="monotone" dataKey="sensor_reading" stroke="#3498db" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
-                        </LineChart>
-                    </ResponsiveContainer>
+            {/* GRID PARA GRÁFICOS */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '25px' }}>
+
+                {/* VISTA 2: Gráfico de Tendência (Linha) */}
+                <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <LinearChartComponent
+                        data={historicalLineChartData}
+                        title="Tendência de Consumo Temporal (kWh)"
+                    />
+                </div>
+
+                {/* VISTA 3: Consumo Total (Barras) */}
+                <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <BarChartComponent
+                        data={barChartData}
+                        title={userRole === 'admin' ? "Total kWh por Dispositivo" : "O Seu Consumo Acumulado"}
+                    />
+                </div>
+
+                {/* VISTA 4: Consumo Médio (Barras) - EXTRA */}
+                <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <BarChartComponent
+                        data={avgData.map(d => ({ name: d.name, kwhTotal: d.mediaKwh }))}
+                        title="Consumo Médio por Leitura (kWh)"
+                    />
+                </div>
+
+                {/* VISTA 5: Volume de Dados (Barras) - EXTRA */}
+                <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <BarChartComponent
+                        data={avgData.map(d => ({ name: d.name, kwhTotal: d.totalRegistos }))}
+                        title="Nº Total de Registos Processados"
+                    />
                 </div>
             </div>
         </div>
     );
 };
-
-const StatCard = ({ icon, title, value }) => (
-    <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '15px' }}>
-        <div style={{ backgroundColor: '#f8f9fa', padding: '12px', borderRadius: '10px' }}>{icon}</div>
-        <div>
-            <div style={{ fontSize: '0.85em', color: '#95a5a6' }}>{title}</div>
-            <div style={{ fontSize: '1.4em', fontWeight: 'bold', color: '#2c3e50' }}>{value}</div>
-        </div>
-    </div>
-);
 
 export default Dashboard;
