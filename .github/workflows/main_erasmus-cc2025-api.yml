@@ -24,14 +24,9 @@ jobs:
 
       - name: Rename JAR to app.jar
         run: |
-          JAR_FILE=$(find target -name "*.jar" -type f -print -quit)
-          if [ -f "$JAR_FILE" ]; then
-            mv "$JAR_FILE" target/app.jar
-            echo "Renamed $JAR_FILE to target/app.jar"
-          else
-            echo "Error: JAR file not found in target directory."
-            exit 1
-          fi
+          # Find the largest JAR in target (this will be the fat jar)
+          JAR_FILE=$(ls -S target/*.jar | grep -v "original" | head -n 1)
+          mv "$JAR_FILE" target/app.jar
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
