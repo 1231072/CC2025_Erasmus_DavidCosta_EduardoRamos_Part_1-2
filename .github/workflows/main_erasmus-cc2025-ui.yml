@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies and build
 
         env:
-          REACT_APP_API_URL: ${{ vars.REACT_APP_API_URL }}
+          REACT_APP_API_URL: "https://p3-ui.azurewebsites.net"
         run: |
           cd src/main/resources/static
           npm install
