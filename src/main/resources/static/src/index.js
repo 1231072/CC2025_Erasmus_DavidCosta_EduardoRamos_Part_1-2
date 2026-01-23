@@ -10,6 +10,7 @@ const cognitoAuthConfig = {
   redirect_uri: "http://localhost:3000",
   response_type: "code",
   scope: "email openid profile",
+  revokeTokenTypes: ["access_token", "refresh_token"],
 };
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
