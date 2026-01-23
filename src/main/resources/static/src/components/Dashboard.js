@@ -10,7 +10,7 @@ import {
 import LatestDataTable from './LatestDataTable';
 import LinearChartComponent from './LinearChartComponent';
 import BarChartComponent from './BarChartComponent';
-
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
 const Dashboard = () => {
     const auth = useAuth();
     const [latestData, setLatestData] = useState([]);
@@ -39,7 +39,7 @@ const Dashboard = () => {
             const token = auth.user?.id_token;
 
             try {
-                const response = await fetch('http://localhost:8080/api/dashboard-data', {
+               const response = await fetch('${API_BASE_URL}/api/dashboard-data', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
