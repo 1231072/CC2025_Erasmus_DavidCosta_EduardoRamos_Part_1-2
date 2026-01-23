@@ -10,8 +10,13 @@ import {
 import LatestDataTable from './LatestDataTable';
 import LinearChartComponent from './LinearChartComponent';
 import BarChartComponent from './BarChartComponent';
-const isLocalhost = window.location.hostname === "localhost";
-const API_BASE_URL = isLocalhost ? "http://localhost:8080" : "";
+
+const API_BASE_URL = window.location.hostname === "localhost"
+    ? "http://localhost:8080"
+    : process.env.REACT_APP_API_URL;
+
+console.log("Fetching data from:", `${API_BASE_URL}/api/dashboard-data`);
+
 const Dashboard = () => {
     const auth = useAuth();
     const [latestData, setLatestData] = useState([]);
