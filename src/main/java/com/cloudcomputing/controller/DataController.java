@@ -11,7 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/data")
-@CrossOrigin(origins = "${app.frontend.url:http://localhost:3000}")
+@CrossOrigin(origins = "${FRONTEND_URL:http://localhost:3000}")
 public class DataController {
 
     @Autowired
