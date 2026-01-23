@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 // Certifique-se de que a porta 8080 é onde o Spring Boot está a correr
-const BASE_URL = 'http://localhost:8080/api';
+const BASE_URL = process.env.REACT_APP_API_URL;
 
 const DataView = () => {
     const [data, setData] = useState([]);

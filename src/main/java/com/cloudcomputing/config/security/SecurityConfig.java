@@ -1,5 +1,6 @@
 package com.cloudcomputing.config.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,6 +21,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -48,24 +52,19 @@ public class SecurityConfig {
     }
 
 
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(request -> {
-                    var corsConfiguration = new CorsConfiguration();
-                    corsConfiguration.setAllowedOrigins(List.of("http://localhost:3000"));
-                    corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                    corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-                    return corsConfiguration;
-                }))
-                .csrf(csrf -> csrf.disable()) // Desativar para facilitar testes locais
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable()) // Desativado para APIs REST
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/public/**").permitAll() // Endpoints abertos
-                        .anyRequest().authenticated() // Tudo o resto exige o Token do Cognito
+                        .requestMatchers("/api/data").hasAnyAuthority("ROLE_User", "ROLE_Admin")
+                        .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(oauth -> oauth.jwt(jwt ->
-                        jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())
-                ));
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
 
         return http.build();
     }
@@ -74,18 +73,16 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000", // Removi o 's' do localhost se não estiver usando SSL local
-                "https://p3-ui.azurewebsites.net"
-        ));
+        // Permite tanto o teu PC como o URL que vier da variável de ambiente
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", frontendUrl));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/api/**", configuration);
         return source;
     }
+
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
